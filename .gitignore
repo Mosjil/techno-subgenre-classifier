@@ -1,0 +1,37 @@
+# PyCharm specific files
+.idea/
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Python byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution and packaging
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+
+# Sensitive data and logs
+.env
+local_settings.py
+db.sqlite3
+*.log
+pip-log.txt
+htmlcov/
+.tox/
+.coverage*
+.cache/
+.cache
+.pytest_cache/
+
+tests/
+outputs/
+data/
+backup/
