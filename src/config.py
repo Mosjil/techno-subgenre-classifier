@@ -43,6 +43,10 @@ class Audio:
     power: float = 2.0
 
 @dataclass
+class SanityCheck:
+    sanity_output_dir: str = "outputs/health"
+
+@dataclass
 class Train:
     generic_output_dir: str = "outputs/"
     batch_size: int = 32
@@ -56,4 +60,5 @@ fetch = Fetch()
 download = Download()
 preprocess = Preprocess()
 audio = Audio()
-train = Train()
+sanity_check = SanityCheck()
+train_config = Train()

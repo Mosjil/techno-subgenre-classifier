@@ -4,9 +4,9 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 import csv
-from utils.metrics import compute_metrics
-from utils.early_stopping import EarlyStopping
-from utils.lr_scheduler import LRSchedulerWrapper
+from src.utils.metrics import compute_metrics
+from src.utils.early_stopping import EarlyStopping
+from src.utils.lr_scheduler import LRSchedulerWrapper
 
 
 def train(train_loader, val_loader, model, num_epochs=30, lr=1e-3, device=None, checkpoint_dir="outputs/checkpoints"):

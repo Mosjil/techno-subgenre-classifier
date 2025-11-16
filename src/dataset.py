@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import Dataset
-from utils.utils import parse_labels
+from src.utils.utils import parse_labels
 import pandas as pd
 import numpy as np
 import ast
