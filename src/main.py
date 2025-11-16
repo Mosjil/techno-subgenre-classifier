@@ -1,6 +1,7 @@
 import argparse
 import torch
 from torch.utils.data import DataLoader, random_split
+from datetime import datetime
 import pandas as pd
 import os
 
@@ -10,23 +11,32 @@ from utils.plots import plot_training_metrics
 from utils.utils import parse_labels
 from train import train
 
+from src.config import preprocess, train
+
 # TODO : Fichier de config global
 
 def main():
 
+
     # Parser
     parser = argparse.ArgumentParser(description="Train a multi-label subgenre classifier")
-    parser.add_argument("--csv_path", type=str, default="data/processed.csv")
-    parser.add_argument("--data_dir", type=str, default="data/specs")
-    parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--epochs", type=int, default=30)
-    parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--model", type=str, default="cnn_bigru")
-    parser.add_argument("--num_workers", type=int, default=2)
-    parser.add_argument("--val_split", type=float, default=0.2)
-    parser.add_argument("--checkpoint_dir", type=str, default="outputs/checkpoints")
+    parser.add_argument("--csv_path", type=str, default=preprocess.preprocessed_csv)
+    parser.add_argument("--data_dir", type=str, default=preprocess.spectrogram_dir)
+    parser.add_argument("--batch_size", type=int, default=train.batch_size)
+    parser.add_argument("--epochs", type=int, default=train.epochs)
+    parser.add_argument("--lr", type=float, default=train.learning_rate)
+    parser.add_argument("--model", type=str, default=train.model)
+    parser.add_argument("--num_workers", type=int, default=train.num_workers)
+    parser.add_argument("--val_split", type=float, default=train.val_split)
     parser.add_argument("--plots", action=argparse.BooleanOptionalAction, default=False)
     args = parser.parse_args()
+
+    # Unique output dir
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    run_name = f"{args.model}_bs{args.batch_size}_{timestamp}"
+    output_dir = os.path.join(train.generic_output_dir, run_name)
+    checkpoint_dir = os.path.join(output_dir, "checkpoints")
+    os.makedirs(output_dir, exist_ok=True)
 
     # CSV load, and dataset creation
     df = pd.read_csv(args.csv_path)
@@ -69,7 +79,7 @@ def main():
     if args.plots:
         print("Plotting training metrics")
         log_path = os.path.join(args.checkpoint_dir, "training_log.csv")
-        plot_training_metrics(log_path, save_dir="outputs/plots")
+        plot_training_metrics(log_path, save_dir=f"{output_dir}/plots")
 
 
 if __name__ == "__main__":

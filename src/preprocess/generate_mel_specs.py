@@ -3,16 +3,17 @@ import numpy as np
 import pandas as pd
 import librosa
 from tqdm import tqdm
+from src.config import preprocess, audio
 
-PROCESSED_CSV = "data/processed.csv"
-SPECS_DIR = "data/specs"
+PROCESSED_CSV = preprocess.preprocessed_csv
+SPECS_DIR = preprocess.spectrogram_dir
 
-SR = 44100
-N_FFT = 4096
-HOP_LENGTH = 512
-N_MELS = 256
-FMIN = 20
-POWER = 2.0
+SR = audio.sample_rate_target
+N_FFT = audio.n_fft
+HOP_LENGTH = audio.hop_length
+N_MELS = audio.n_mels
+FMIN = audio.fmin
+POWER = audio.power
 
 os.makedirs(SPECS_DIR, exist_ok=True)
 

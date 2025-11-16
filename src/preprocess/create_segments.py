@@ -3,17 +3,18 @@ import librosa
 import soundfile as sf
 import pandas as pd
 from tqdm import tqdm
+from src.config import download, preprocess, audio
 
-RAW_DIR = "data/raw"
-SEGMENT_DIR = "data/segments"
-PROCESSED_CSV = "data/processed.csv"
-METADATA_CSV = "data/metadata.csv"
+RAW_DIR = download.download_dir
+SEGMENT_DIR = preprocess.segments_dir
+PROCESSED_CSV = preprocess.processed_csv
+METADATA_CSV = download.output_metadata_csv
 
-SEGMENT_DURATION = 30
-PADDING = 5             # sec to ignore before after
-SR_TARGET = 44100
-MAX_MUSIC_DURATION = 10*60 # 10 mins
-MAX_SEGMENTS = MAX_MUSIC_DURATION/SEGMENT_DURATION
+SEGMENT_DURATION = audio.segment_duration
+PADDING = audio.audio_padding   # sec to ignore before after
+SR_TARGET = audio.sample_rate_target
+MAX_MUSIC_DURATION = audio.max_music_duration
+MAX_SEGMENTS = audio.max_segments
 
 os.makedirs(SEGMENT_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PROCESSED_CSV), exist_ok=True)

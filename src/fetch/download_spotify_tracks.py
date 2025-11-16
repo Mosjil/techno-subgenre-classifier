@@ -3,6 +3,7 @@ import pandas as pd
 import subprocess
 from pathlib import Path
 from tqdm import tqdm
+from src.config import download
 
 
 # TODO : Gérer le fait de pouvoir télécharger de nouveaux sous genres sans écraser le dataset existant
@@ -10,11 +11,11 @@ from tqdm import tqdm
 # TODO : Faire une boucle de vérification pour checker si tout a bien été téléchargé (avec un fuzz ?)
 # TODO : Ne pas télécharger des trop longues musiques (DJ Set en entier)
 
-INPUT_CSV = "spotify_tracks.csv"
-OUTPUT_METADATA = "data/metadata.csv"
-DOWNLOAD_DIR = "data/raw"
-SPOTDL_CMD = "spotdl"
-FFMPEG_PATH = r"C:\ffmpeg\bin\ffmpeg.exe"
+INPUT_CSV = download.input_csv
+OUTPUT_METADATA = download.output_metadata
+DOWNLOAD_DIR = download.download_dir
+SPOTDL_CMD = download.spotdl_cmd
+FFMPEG_PATH = download.ffmpeg_path
 
 
 def download_tracks(df):

@@ -6,8 +6,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 import time
 from rapidfuzz import fuzz
 from dotenv import load_dotenv
-
-from src.preprocess.create_segments import MAX_MUSIC_DURATION
+from src.config import fetch, audio
 
 # TODO : fuzz score dynamique
 # TODO : Problème de duplicate sur les noms (ID différents, albums... mais mm musique)
@@ -16,15 +15,15 @@ from src.preprocess.create_segments import MAX_MUSIC_DURATION
 load_dotenv()
 CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
-OUTPUT_CSV = "spotify_tracks.csv"
-MAX_MUSIC_DURATION = 10*60 # 10 minutes
+OUTPUT_CSV = fetch.output_spotify_tracks
+MAX_MUSIC_DURATION = audio.max_track_duration
 
-SUBGENRES = ["Tech House", "Hard Techno", "Melodic Techno", "Minimal Techno", "Trance"]
+SUBGENRES = audio.subgenres
 
-TRACKS_PER_GENRE = 100
-SLEEP_BETWEEN_CALLS = 0.5
+TRACKS_PER_GENRE = fetch.tracks_per_subgenre
+SLEEP_BETWEEN_CALLS = fetch.sleep_between_calls
 
-FUZZ_SCORE_RATIO = 80
+FUZZ_SCORE_RATIO = fetch.fuzz_score_ratio
 
 def setup_spotify():
     """Auth to spotify client"""
