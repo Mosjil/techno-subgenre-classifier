@@ -31,7 +31,7 @@ class Audio:
         "Minimal Techno",
         "Trance",
     ])
-    max_track_duration: int = 10*60 # 10mins
+    max_track_duration: int = 15*60 # 15mins
     segment_duration: int = 30
     max_segments = max_track_duration/segment_duration
     audio_padding:int = 5
