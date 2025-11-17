@@ -52,7 +52,7 @@ class Train:
     batch_size: int = 64
     epochs: int = 30
     learning_rate: float = 1e-3
-    model: str = "cnn_bigru"
+    model: str = "cnn_bigru" #vit
     num_workers: int = 2
     val_split: float = 0.3
 

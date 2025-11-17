@@ -18,7 +18,7 @@ def train(train_loader, val_loader, model, model_name, num_epochs=30, lr=1e-3, d
 
     freeze_until = 0
     if model_name == "vit":
-        optimizer = optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-4)
+        optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
 
         total_steps = num_epochs * len(train_loader)
         warmup_steps = int(total_steps * 0.1)

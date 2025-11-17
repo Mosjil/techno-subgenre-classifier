@@ -22,6 +22,17 @@ Training Part :
 
 - main.py
 
+Others : 
+ - Check the ```config.py```
+ - You can run a dataset health check with
+```bash
+python -m src.utils.dataset_health --csv pathtoprocessedcsv
+```
+ - You can fix some issues with
+```bash
+python -m src.utils.clean_dataset
+```
+
 More complete Readme to come.
 
 ## License
