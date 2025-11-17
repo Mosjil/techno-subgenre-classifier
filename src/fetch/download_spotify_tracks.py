@@ -5,8 +5,6 @@ from pathlib import Path
 from tqdm import tqdm
 from src.config import download
 
-
-# TODO : Gérer le fait de pouvoir télécharger de nouveaux sous genres sans écraser le dataset existant
 # TODO : Ajouter une écriture auto dans le csv toutes les x musiques (update)
 # TODO : Faire une boucle de vérification pour checker si tout a bien été téléchargé (avec un fuzz ?)
 # TODO : Ne pas télécharger des trop longues musiques (DJ Set en entier)
@@ -81,7 +79,17 @@ def main():
 
     metadata = download_tracks(df)
 
-    df_meta = pd.DataFrame(metadata)
+    # SAVE WITHOUT CRUSHING
+    if os.path.exists(OUTPUT_METADATA):
+        old = pd.read_csv(OUTPUT_METADATA)
+        df_new = pd.DataFrame(metadata)
+
+        # merge and avoid duplicates via file path
+        df_meta = pd.concat([old, df_new], ignore_index=True)
+        df_meta.drop_duplicates(subset=["path"], inplace=True)
+    else:
+        df_meta = pd.DataFrame(metadata)
+
     df_meta["path"] = df_meta["path"].apply(lambda p: p.replace("\\", "/") if isinstance(p, str) else p)
     df_meta.to_csv(OUTPUT_METADATA, index=False)
     print(f"\nSaved metadata for {len(df_meta)} tracks to {OUTPUT_METADATA}")

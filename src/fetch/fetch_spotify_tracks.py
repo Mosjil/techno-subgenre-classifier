@@ -237,7 +237,22 @@ def main():
     merged_tracks = merge_tracks_by_query(all_tracks)
 
     # Save CSV
-    df = pd.DataFrame(merged_tracks)
+
+    if os.path.exists(OUTPUT_CSV):
+        old = pd.read_csv(OUTPUT_CSV)
+        df_new = pd.DataFrame(merged_tracks)
+
+        # merge without duplicates based on track ID # TODO MAYBE ALSO BY ARTIST/NAME.
+        df = pd.concat([old, df_new], ignore_index=True)
+        df.drop_duplicates(subset=["id"], inplace=True)
+
+        # convert subgenres to consistent string format
+        df["subgenres"] = df["subgenres"].apply(
+            lambda x: ", ".join(sorted(set(str(x).split(", "))))
+        )
+    else:
+        df = pd.DataFrame(merged_tracks)
+
     df.drop_duplicates(subset=["id"], inplace=True)
     df = df[df["duration_s"] <= MAX_MUSIC_DURATION]
     df["subgenres"] = df["subgenres"].apply(lambda lst: ", ".join(lst))

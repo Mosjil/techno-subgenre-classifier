@@ -8,27 +8,8 @@ import seaborn as sns
 import logging
 from datetime import datetime
 
-
+from src.utils.utils import setup_logger
 from src.config import sanity_check
-
-def setup_logger(outdir: str):
-    Path(outdir).mkdir(parents=True, exist_ok=True)
-    log_path = Path(outdir, f"health_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
-
-    logging.basicConfig(
-        filename=log_path,
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s"
-    )
-
-    # Log also to console
-    console = logging.StreamHandler()
-    console.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(message)s")
-    console.setFormatter(formatter)
-    logging.getLogger("").addHandler(console)
-
-    print(f"Logging to {log_path}")
 
 def read_csv(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
@@ -178,8 +159,8 @@ def segments_per_track(df: pd.DataFrame) -> pd.DataFrame:
         .sort_values("segments_per_track", ascending=False)
     )
 
-    print("\n=== Segments per Track (Top 10) ===")
-    print(per_track.head(10).to_string(index=False))
+    logging.info("\n=== Segments per Track (Top 10) ===")
+    logging.info(per_track.head(10).to_string(index=False))
 
     return per_track
 
@@ -299,7 +280,7 @@ def main():
     outdir = args.outdir
 
     # INITIALIZE LOGGER
-    setup_logger(outdir)
+    setup_logger(outdir=outdir, filename="health")
     logging.info("=== DATASET HEALTH CHECK STARTED ===")
 
     # LOAD CSV

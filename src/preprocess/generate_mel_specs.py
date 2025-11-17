@@ -59,7 +59,10 @@ def generate_all_specs(plots=False):
         except Exception as e:
             print(f"Error processing {audio_path}: {e}")
 
-    df_out = pd.DataFrame(rows_ok)
+    df_out = pd.DataFrame(rows_ok).drop_duplicates(
+        subset=["path_audio", "segment_id"]
+    )
+    df_out.to_csv(PROCESSED_CSV, index=False)
     df_out["path_spec"] = df_out["path_spec"].apply(lambda p: p.replace("\\", "/") if isinstance(p, str) else p)
     df_out.to_csv(PROCESSED_CSV, index=False)
     print(f"\n{len(rows_ok)} spectrograms saved in '{SPECS_DIR}'")

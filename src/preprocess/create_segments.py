@@ -7,17 +7,29 @@ from src.config import download, preprocess, audio
 
 RAW_DIR = download.download_dir
 SEGMENT_DIR = preprocess.segments_dir
-PROCESSED_CSV = preprocess.processed_csv
+PROCESSED_CSV = preprocess.preprocessed_csv
 METADATA_CSV = download.output_metadata_csv
 
 SEGMENT_DURATION = audio.segment_duration
 PADDING = audio.audio_padding   # sec to ignore before after
 SR_TARGET = audio.sample_rate_target
-MAX_MUSIC_DURATION = audio.max_music_duration
+MAX_MUSIC_DURATION = audio.max_track_duration
 MAX_SEGMENTS = audio.max_segments
 
 os.makedirs(SEGMENT_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PROCESSED_CSV), exist_ok=True)
+
+def segments_already_exist(base_name, expected_num):
+    """
+    Vérifie si tous les segments .wav existent déjà.
+    expected_num = nombre de segments attendus
+    """
+    for seg_id in range(expected_num):
+        seg_filename = f"{base_name}_seg{seg_id}.wav"
+        seg_path = os.path.join(SEGMENT_DIR, seg_filename)
+        if not os.path.exists(seg_path):
+            return False
+    return True
 
 def create_segments():
     df_meta = pd.read_csv(METADATA_CSV)
@@ -34,9 +46,7 @@ def create_segments():
             continue
 
         try:
-            # Chargement à SR natif
             y, sr_in = librosa.load(audio_path, sr=None)
-            # Resampling vers SR_TARGET si nécessaire
             if sr_in != SR_TARGET:
                 y = librosa.resample(y=y, orig_sr=sr_in, target_sr=SR_TARGET)
             sr = SR_TARGET
@@ -49,38 +59,38 @@ def create_segments():
         end_time = total_duration - PADDING
 
         if end_time <= start_time:
-            print(f"{audio_path}: too short (< {2*PADDING}s), skipped.")
+            print(f"{audio_path}: too short (< {2 * PADDING}s), skipped.")
             continue
 
-        num_segments = min(MAX_SEGMENTS, int((end_time - start_time) // SEGMENT_DURATION))
-        if num_segments == 0:
+        expected_segments = min(MAX_SEGMENTS, int((end_time - start_time) // SEGMENT_DURATION))
+        if expected_segments == 0:
             print(f"{audio_path}: shorter than one segment, skipped.")
             continue
 
-        for seg_id in range(num_segments):
-            seg_start = start_time + seg_id * SEGMENT_DURATION
-            seg_end = seg_start + SEGMENT_DURATION
-            seg_y = y[int(seg_start * sr):int(seg_end * sr)]
+        base_name = os.path.splitext(os.path.basename(audio_path))[0]
 
-            base_name = os.path.splitext(os.path.basename(audio_path))[0]
-            seg_filename = f"{base_name}_seg{seg_id}.wav"
-            seg_path = os.path.join(SEGMENT_DIR, seg_filename)
+        # SKIP SI TOUS LES SEGMENTS EXISTENT DEJA
+        if segments_already_exist(base_name, expected_segments):
+            print(f"Skipping {base_name} — all {expected_segments} segments already exist.")
 
-            # Save
-            sf.write(seg_path, seg_y, sr)
+            # Mais on doit quand même remplir le CSV !
+            for seg_id in range(expected_segments):
+                seg_filename = f"{base_name}_seg{seg_id}.wav"
+                seg_path = os.path.join(SEGMENT_DIR, seg_filename)
 
-            # Link for Mel_Spec
-            spec_filename = seg_filename.replace(".wav", ".npy")
-            spec_path = os.path.join("data/specs", spec_filename)
+                spec_filename = seg_filename.replace(".wav", ".npy")
+                spec_path = os.path.join("data/specs", spec_filename)
 
-            processed_rows.append({
-                "path_audio": seg_path,
-                "path_spec": spec_path,
-                "artist": artist,
-                "title": title,
-                "segment_id": seg_id,
-                "subgenres": subgenres
-            })
+                processed_rows.append({
+                    "path_audio": seg_path.replace("\\", "/"),
+                    "path_spec": spec_path.replace("\\", "/"),
+                    "artist": artist,
+                    "title": title,
+                    "segment_id": seg_id,
+                    "subgenres": subgenres
+                })
+
+            continue
 
     df_out = pd.DataFrame(processed_rows)
     df_out["path_audio"] = df_out["path_audio"].apply(lambda p: p.replace("\\", "/") if isinstance(p, str) else p)
