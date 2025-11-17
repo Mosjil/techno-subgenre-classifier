@@ -105,6 +105,15 @@ def visualize_mel_spectrogram(mel_spectrogram, sr=44100, hop_length=512, fmin=20
     else:
         plt.close()
 
+def create_spec_for_inference(segment_path, output_path, save_plot=False):
+    mel = generate_mel_spectrogram(segment_path)
+    np.save(output_path, mel)
+
+    if save_plot:
+        visualize_mel_spectrogram(mel, save_path=output_path.replace(".npy", ".png"))
+
+    return output_path
+
 
 if __name__ == "__main__":
     generate_all_specs(plots=False)

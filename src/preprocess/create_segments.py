@@ -48,7 +48,7 @@ def create_segments():
         try:
             y, sr_in = librosa.load(audio_path, sr=None)
             if sr_in != SR_TARGET:
-                y = librosa.resample(y=y, orig_sr=sr_in, target_sr=SR_TARGET)
+                y = librosa.resample(y, orig_sr=sr_in, target_sr=SR_TARGET)
             sr = SR_TARGET
         except Exception as e:
             print(f"Error loading {audio_path}: {e}")
@@ -59,38 +59,44 @@ def create_segments():
         end_time = total_duration - PADDING
 
         if end_time <= start_time:
-            print(f"{audio_path}: too short (< {2 * PADDING}s), skipped.")
+            print(f"{audio_path}: too short (< {2*PADDING}s), skipped.")
             continue
 
-        expected_segments = min(MAX_SEGMENTS, int((end_time - start_time) // SEGMENT_DURATION))
-        if expected_segments == 0:
+        num_segments = min(MAX_SEGMENTS, int((end_time - start_time) // SEGMENT_DURATION))
+        if num_segments == 0:
             print(f"{audio_path}: shorter than one segment, skipped.")
             continue
 
         base_name = os.path.splitext(os.path.basename(audio_path))[0]
 
-        # SKIP SI TOUS LES SEGMENTS EXISTENT DEJA
-        if segments_already_exist(base_name, expected_segments):
-            print(f"Skipping {base_name} — all {expected_segments} segments already exist.")
+        # Passe skip global seulement si TOUT existe
+        if segments_already_exist(base_name, num_segments):
+            print(f"Skipping {base_name} — all {num_segments} segments already exist.")
+        else:
+            print(f"Processing {base_name} — creating missing segments if needed.")
 
-            # Mais on doit quand même remplir le CSV !
-            for seg_id in range(expected_segments):
-                seg_filename = f"{base_name}_seg{seg_id}.wav"
-                seg_path = os.path.join(SEGMENT_DIR, seg_filename)
+        for seg_id in range(num_segments):
+            seg_filename = f"{base_name}_seg{seg_id}.wav"
+            seg_path = os.path.join(SEGMENT_DIR, seg_filename)
 
-                spec_filename = seg_filename.replace(".wav", ".npy")
-                spec_path = os.path.join("data/specs", spec_filename)
+            # Si le segment manque, on le découpe et on le sauvegarde
+            if not os.path.exists(seg_path):
+                seg_start = start_time + seg_id * SEGMENT_DURATION
+                seg_end = seg_start + SEGMENT_DURATION
+                seg_y = y[int(seg_start * sr):int(seg_end * sr)]
+                sf.write(seg_path, seg_y, sr)
 
-                processed_rows.append({
-                    "path_audio": seg_path.replace("\\", "/"),
-                    "path_spec": spec_path.replace("\\", "/"),
-                    "artist": artist,
-                    "title": title,
-                    "segment_id": seg_id,
-                    "subgenres": subgenres
-                })
-
-            continue
+            # Ligne CSV systématique
+            spec_filename = seg_filename.replace(".wav", ".npy")
+            spec_path = os.path.join("data/specs", spec_filename)
+            processed_rows.append({
+                "path_audio": seg_path.replace("\\", "/"),
+                "path_spec": spec_path.replace("\\", "/"),
+                "artist": artist,
+                "title": title,
+                "segment_id": seg_id,
+                "subgenres": subgenres
+            })
 
     df_out = pd.DataFrame(processed_rows)
     df_out["path_audio"] = df_out["path_audio"].apply(lambda p: p.replace("\\", "/") if isinstance(p, str) else p)
@@ -98,6 +104,7 @@ def create_segments():
 
     print(f"\nDone! {len(df_out)} segments saved at {SR_TARGET} Hz in '{SEGMENT_DIR}'")
     print(f"Processed CSV saved to '{PROCESSED_CSV}'")
+
 
 if __name__ == "__main__":
     create_segments()
