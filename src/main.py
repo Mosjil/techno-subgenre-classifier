@@ -7,13 +7,13 @@ import os
 
 from src.dataset import TechnoDataset
 from src.models.cnn_bigru import ParallelCNNBiGRU
+from src.models.ViTSmallMAE import ViTSmallMAEForAudio
 from src.utils.plots import plot_training_metrics
 from src.utils.utils import parse_labels
 from src.train import train
 
 from src.config import preprocess, train_config
 
-# TODO : Fichier de config global
 
 def main():
 
@@ -66,6 +66,8 @@ def main():
     # Ini model
     if args.model == "cnn_bigru":
         model = ParallelCNNBiGRU(num_classes=num_classes)
+    elif args.model == "vit":
+        model = ViTSmallMAEForAudio(num_classes=num_classes)
     else:
         raise ValueError(f"Unknown model: {args.model}")
 
@@ -77,6 +79,7 @@ def main():
         train_loader=train_dl,
         val_loader=val_dl,
         model=model,
+        model_name=args.model,
         num_epochs=args.epochs,
         lr=args.lr,
         device=device,

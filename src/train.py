@@ -6,19 +6,42 @@ from tqdm import tqdm
 import csv
 from src.utils.metrics import compute_metrics
 from src.utils.early_stopping import EarlyStopping
-from src.utils.lr_scheduler import LRSchedulerWrapper
+from src.utils.scheduler import LRSchedulerWrapper, WarmupCosineScheduler
 
 
-def train(train_loader, val_loader, model, num_epochs=30, lr=1e-3, device=None, checkpoint_dir="outputs/checkpoints"):
+def train(train_loader, val_loader, model, model_name, num_epochs=30, lr=1e-3, device=None, checkpoint_dir="outputs/checkpoints"):
 
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = model.to(device)
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+
+    freeze_until = 0
+    if model_name == "vit":
+        optimizer = optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-4)
+
+        total_steps = num_epochs * len(train_loader)
+        warmup_steps = int(total_steps * 0.1)
+
+        scheduler = WarmupCosineScheduler(optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
+
+        # Freeze
+        for name, param in model.backbone.named_parameters():
+            if "encoder.layer.0" in name or "encoder.layer.1" in name:
+                param.requires_grad = False
+        freeze_until = 5
+
+    elif model_name == "cnn_bigru":
+        optimizer = optim.Adam(model.parameters(), lr=lr)
+        scheduler = LRSchedulerWrapper(optimizer, mode='max')  # Maximizing F1
+    else:
+        print("Not a valid model name")
+        quit()
+
+    # Global
     criterion = nn.BCEWithLogitsLoss()
     early_stopper = EarlyStopping()
-    scheduler = LRSchedulerWrapper(optimizer, mode='max') # Maximizing F1
+
 
     os.makedirs(checkpoint_dir, exist_ok=True)
     best_f1 = 0.0
@@ -33,6 +56,12 @@ def train(train_loader, val_loader, model, num_epochs=30, lr=1e-3, device=None, 
     # Main loop
     for epoch in range(1, num_epochs + 1):
 
+        # Freeze
+        if model_name == "vit" and epoch == freeze_until:
+            print("Unfreezing ViT backbone...")
+            for param in model.backbone.parameters():
+                param.requires_grad = True
+
         # Train
         model.train()
         train_loss = 0.0
@@ -44,6 +73,9 @@ def train(train_loader, val_loader, model, num_epochs=30, lr=1e-3, device=None, 
             preds = model(xb)
             loss = criterion(preds, yb)
             loss.backward()
+            # Gradient clipping
+            if model_name == "vit":
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
 
             train_loss += loss.item()
@@ -72,7 +104,14 @@ def train(train_loader, val_loader, model, num_epochs=30, lr=1e-3, device=None, 
         metrics = compute_metrics(y_true, y_pred)
         f1_macro = metrics["f1_macro"]
 
-        scheduler.step(f1_macro)
+        if model_name == "vit":
+            scheduler.step()
+        elif model_name == "cnn_bigru":
+            scheduler.step(f1_macro)
+        else:
+            print("Not a valid model name")
+            quit()
+
         current_lr = scheduler.get_lr()
 
         print(

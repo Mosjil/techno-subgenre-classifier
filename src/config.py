@@ -49,12 +49,12 @@ class SanityCheck:
 @dataclass
 class Train:
     generic_output_dir: str = "outputs/"
-    batch_size: int = 32
+    batch_size: int = 64
     epochs: int = 30
     learning_rate: float = 1e-3
     model: str = "cnn_bigru"
     num_workers: int = 2
-    val_split: float = 0.2
+    val_split: float = 0.3
 
 fetch = Fetch()
 download = Download()
