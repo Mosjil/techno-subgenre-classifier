@@ -35,5 +35,8 @@ tests/
 outputs/
 data/
 backup/
+inference/
 
 spotify_tracks.csv
+soundcloud_tracks.csv
+auto_launch.bat
