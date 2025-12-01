@@ -8,11 +8,10 @@ class ViTSmallMAEForAudio(nn.Module):
         super().__init__()
 
         self.backbone = ViTMAEModel.from_pretrained(
-            "facebook/vit-mae-small",
-            add_pooling_layer=True
+            "facebook/vit-mae-base",
         )
 
-        embed_dim = 384
+        embed_dim = 768
 
         self.head = nn.Linear(embed_dim, num_classes)
 
@@ -28,6 +27,6 @@ class ViTSmallMAEForAudio(nn.Module):
         # Passer dans le ViTMAE
         out = self.backbone(pixel_values=x)
 
-        cls = out.pooler_output
+        cls = out.last_hidden_state[:, 0]
 
         return self.head(cls)

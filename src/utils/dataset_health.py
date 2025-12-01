@@ -1,4 +1,5 @@
 import argparse
+import os.path
 from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -179,7 +180,7 @@ def check_files_exist(df: pd.DataFrame) -> pd.DataFrame:
     # Vérification simple
     def exists(p):
         try:
-            return Path(p).exists()
+            return os.path.exists(p)
         except Exception:
             return False
 
