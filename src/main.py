@@ -6,15 +6,21 @@ import pandas as pd
 import os
 
 from src.dataset import TechnoDataset
+
 from src.models.cnn_bigru import ParallelCNNBiGRU
-from src.models.ViTSmallMAE import ViTSmallMAEForAudio
+from src.models.ViTBaseMAE import ViTSmallMAEForAudio
+from src.models.ViTLargeMAE import ViTLargeMAEForAudio
+from src.models.ViTHugeMAE import ViTHugeMAEForAudio
+from src.models.ASTForAudio import ASTForAudio
+from src.models.AudioMAE import AudioMAEForAudio
+
 from src.utils.plots import plot_training_metrics
 from src.utils.utils import parse_labels
 from src.train import train
 
 from src.config import preprocess, train_config
 
-
+# TODO: Resoudre problème de data leakage
 def main():
 
 
@@ -64,10 +70,18 @@ def main():
     val_dl   = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     # Ini model
-    if args.model == "cnn_bigru":
+    if args.model == "cnn-bigru":
         model = ParallelCNNBiGRU(num_classes=num_classes)
-    elif args.model == "vit":
+    elif args.model == "vit-base":
         model = ViTSmallMAEForAudio(num_classes=num_classes)
+    elif args.model == "vit-large":
+        model = ViTLargeMAEForAudio(num_classes=num_classes)
+    elif args.model == "vit-huge":
+        model = ViTHugeMAEForAudio(num_classes=num_classes)
+    elif args.model == "ast":
+        model = ASTForAudio(num_classes=num_classes)
+    elif args.model == "audio-mae":
+        model = AudioMAEForAudio(num_classes=num_classes)
     else:
         raise ValueError(f"Unknown model: {args.model}")
 
@@ -84,6 +98,9 @@ def main():
         lr=args.lr,
         device=device,
         checkpoint_dir=checkpoint_dir,
+        patience=train_config.patience,
+        min_delta=train_config.min_delta,
+        freeze=train_config.freeze
     )
 
     # Plot

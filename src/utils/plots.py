@@ -6,7 +6,7 @@ import sys
 # TODO : Modifier le path si jamais passage en dynamique.
 # TODO : Modifier les noms des graphs dynamiquement.
 
-def plot_training_metrics(log_path="outputs/checkpoints/training_log.csv", save_dir="outputs/plots"):
+def plot_training_metrics(log_path="outputs/checkpoints/training_log.csv", save_dir_base="outputs/plots"):
 
     if not os.path.exists(log_path):
         raise FileNotFoundError(f"Log file not found: {log_path}")
@@ -14,6 +14,7 @@ def plot_training_metrics(log_path="outputs/checkpoints/training_log.csv", save_
     df = pd.read_csv(log_path)
     print(f"Loaded {len(df)} epochs from {log_path}")
 
+    save_dir = save_dir_base
     os.makedirs(save_dir, exist_ok=True)
 
     # Metrics list

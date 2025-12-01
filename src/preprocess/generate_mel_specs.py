@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import librosa
+from pathlib import Path
 from tqdm import tqdm
 from src.config import preprocess, audio
 
@@ -17,9 +18,12 @@ POWER = audio.power
 
 os.makedirs(SPECS_DIR, exist_ok=True)
 
-def generate_mel_spectrogram(audio_path, sr=SR):
-    """Load an audio file and generate mel-spectrogram"""
-    y, _ = librosa.load(audio_path, sr=sr)
+def generate_mel_spectrogram(audio_or_path, sr=SR):
+    """Load an audio file or an array and generate mel-spectrogram"""
+    if isinstance(audio_or_path, np.ndarray):
+        y = audio_or_path
+    else:
+        y, _ = librosa.load(audio_or_path, sr=sr)
 
     S = librosa.feature.melspectrogram(
         y=y, sr=sr, n_fft=N_FFT, hop_length=HOP_LENGTH,
@@ -73,7 +77,7 @@ import matplotlib.pyplot as plt
 import librosa.display
 import numpy as np
 
-def visualize_mel_spectrogram(mel_spectrogram, sr=44100, hop_length=512, fmin=20, save_path=None, show=False):
+def visualize_mel_spectrogram(mel_spectrogram, sr=SR, hop_length=HOP_LENGTH, fmin=FMIN, save_path=None, show=False):
 
     plt.figure(figsize=(10, 4))
     librosa.display.specshow(
@@ -91,10 +95,11 @@ def visualize_mel_spectrogram(mel_spectrogram, sr=44100, hop_length=512, fmin=20
     plt.tight_layout()
 
     if save_path is not None:
-        if save_path.endswith(".npy"):
-            img_path = save_path.replace(".npy", ".png")
+        extension = Path(save_path).suffix
+        if extension == ".npy":
+            img_path = str(save_path).replace(".npy", ".png")
         else:
-            img_path = save_path + ".png"
+            img_path = str(save_path) + ".png"
 
         os.makedirs(os.path.dirname(img_path), exist_ok=True)
         plt.savefig(img_path, dpi=150, bbox_inches='tight')
@@ -105,14 +110,6 @@ def visualize_mel_spectrogram(mel_spectrogram, sr=44100, hop_length=512, fmin=20
     else:
         plt.close()
 
-def create_spec_for_inference(segment_path, output_path, save_plot=False):
-    mel = generate_mel_spectrogram(segment_path)
-    np.save(output_path, mel)
-
-    if save_plot:
-        visualize_mel_spectrogram(mel, save_path=output_path.replace(".npy", ".png"))
-
-    return output_path
 
 
 if __name__ == "__main__":

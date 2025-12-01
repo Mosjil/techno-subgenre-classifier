@@ -1,35 +1,17 @@
 import argparse
-import torch
-import librosa
-import numpy as np
+import os
 from pathlib import Path
+import pandas as pd
+import numpy as np
+import librosa
+import torch
+import soundfile as sf
+import matplotlib.pyplot as plt
+
+from src.preprocess.create_segments import split_audio
+from src.preprocess.generate_mel_specs import generate_mel_spectrogram, visualize_mel_spectrogram
 from src.models.cnn_bigru import ParallelCNNBiGRU
 from src.config import audio
-
-# TODO : Utiliser les mêmes fonction que dans le preprocessing. Ici on génère le spect avant de le couper. Alors que dans le
-# preprocessing on coupe l'audio avant de générer les specs.
-
-def extract_mel_tensor(y, sr, n_fft=audio.n_fft, hop_length=audio.hop_length, n_mels=audio.n_mels):
-    S = librosa.feature.melspectrogram(
-        y=y, sr=sr, n_fft=n_fft, hop_length=hop_length,
-        n_mels=n_mels, fmin=audio.fmin, fmax=sr//2, power=audio.power
-    )
-    S_db = librosa.power_to_db(S, ref=np.max)
-    S_db = (S_db - S_db.mean()) / (S_db.std() + 1e-8)
-    return torch.tensor(S_db, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
-
-
-def split_audio(y, sr, segment_duration=audio.segment_duration, overlap=0.5):
-    seg_len = int(segment_duration * sr)
-    step = int(seg_len * (1 - overlap))
-    segments = []
-    for start in range(0, len(y) - seg_len + 1, step):
-        end = start + seg_len
-        segments.append(y[start:end])
-    # cas où la piste est plus courte
-    if not segments:
-        segments = [np.pad(y, (0, max(0, seg_len - len(y))))[:seg_len]]
-    return segments
 
 def load_model(checkpoint_path, device):
     model = ParallelCNNBiGRU(num_classes=len(audio.subgenres))
@@ -38,26 +20,45 @@ def load_model(checkpoint_path, device):
     model.to(device).eval()
     return model
 
-def predict_audio(path_audio, model, device, sr=audio.sample_rate_target, threshold=None):
-    y, _ = librosa.load(path_audio, sr=sr, mono=True)
-    segments = split_audio(y, sr, segment_duration=audio.segment_duration, overlap=0.5)
+def predict_audio(path_audio, model, device, segment_duration, overlap, save_outputs=False, out_dir=None):
+    y, sr = librosa.load(path_audio, sr=audio.sample_rate_target, mono=True)
+    base_name = Path(path_audio).stem
+    out_base = None
+    if save_outputs and out_dir is not None:
+        out_base = Path(out_dir) / base_name
+        os.makedirs(out_base / "segments", exist_ok=True)
+        os.makedirs(out_base / "spectrograms", exist_ok=True)
+        os.makedirs(out_base / "results", exist_ok=True)
 
+    segments = split_audio(y, sr, segment_duration=segment_duration, overlap=overlap)
     all_probs = []
-    for seg in segments:
-        x = extract_mel_tensor(seg, sr).to(device)
+
+    for i, seg in enumerate(segments):
+        # Sauvegarde segment audio si demandé
+        if out_base is not None:
+            seg_path = out_base / "segments" / f"{base_name}_seg{i}.wav"
+            sf.write(str(seg_path), seg, sr)
+        # Génère et sauvegarde mel spectrogramme
+        mel = generate_mel_spectrogram(seg, sr)
+
+        if out_base is not None:
+            spec_path = out_base / "spectrograms" / f"{base_name}_seg{i}.npy"
+            visualize_mel_spectrogram(mel_spectrogram=mel, save_path=spec_path)
+
+        # Préparation pour le modèle
+        x = torch.tensor(mel, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)
         with torch.no_grad():
             logits = model(x)
             probs = torch.sigmoid(logits).cpu().numpy().flatten()
-            all_probs.append(probs)
+        all_probs.append(probs)
 
     mean_probs = np.mean(all_probs, axis=0)
-    if threshold is not None:
-        active = mean_probs >= threshold
-    else:
-        active = mean_probs >= 0.5
-
-    return mean_probs, active
-
+    if out_base is not None:
+        results_path = out_base / "results" / f"{base_name}_results.csv"
+        print(sorted(audio.subgenres))
+        df = pd.DataFrame({"subgenre": sorted(audio.subgenres), "proba": mean_probs})
+        df.to_csv(results_path, index=False)
+    return mean_probs
 
 def display_results(path, mean_probs):
     probs = mean_probs.copy()
@@ -67,26 +68,32 @@ def display_results(path, mean_probs):
         norm_probs = probs / total
     else:
         norm_probs = probs
-
     print(f"\nAudio : {Path(path).name}")
-    print("Probabilités par sous-genre :")
-    for label, p, n in sorted(zip(audio.subgenres, probs, norm_probs), key=lambda x: -x[1]):
-        print(f"  {label:<20} {p*100:5.1f}%  (normalisé {n*100:5.1f}%)")
-
-    top = sorted(zip(audio.subgenres, probs), key=lambda x: -x[1])[:3]
+    print("Probabilités par sous-genre :", sorted(audio.subgenres))
+    for label, p, n in sorted(zip(sorted(audio.subgenres), probs, norm_probs), key=lambda x: -x[1]):
+        print(f"  {label:<20} {p*100:5.1f}% (normalisé {n*100:5.1f}%)")
+    top = sorted(zip(sorted(audio.subgenres), probs), key=lambda x: -x[1])[:3]
     mix = [f"{lbl} {p*100:.1f}%" for lbl, p in top]
     print("\nMix dominant :", ", ".join(mix))
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Multi-label inference for techno subgenres")
     parser.add_argument("audio_path", type=str, help="Chemin vers le fichier audio (.mp3/.wav)")
     parser.add_argument("--checkpoint", type=str, default="outputs/checkpoints/best_model.pth")
     parser.add_argument("--threshold", type=float, default=None, help="Seuil pour activer les classes")
-    args = parser.parse_args()
+    parser.add_argument("--save-outputs", action="store_true",
+                        help="Sauvegarder les segments, spectrogrammes, et plots")
+    parser.add_argument("--output-dir", type=str, default="inference",
+                        help="Répertoire de sortie (dossier parent)")
 
+    args = parser.parse_args()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = load_model(args.checkpoint, device)
-
-    mean_probs, _ = predict_audio(args.audio_path, model, device, threshold=args.threshold)
+    mean_probs = predict_audio(
+        args.audio_path, model, device,
+        segment_duration=audio.segment_duration,
+        overlap=0.5,
+        save_outputs=args.save_outputs,
+        out_dir=args.output_dir if args.save_outputs else None
+    )
     display_results(args.audio_path, mean_probs)
